@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Auto-tracks development ideas across all projects in docs/ideas.md, updates status as work progresses, and generates listing + HTML reports.",
   "author": {
-    "name": "vladko13",
+    "name": "Vladislav Vladimirov",
     "email": "vladko13@gmail.com"
   }
 }
