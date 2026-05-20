@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "task-tracker-marketplace",
+  "description": "Single-plugin marketplace hosting the task-tracker plugin.",
+  "owner": {
+    "name": "vladko13",
+    "email": "vladko13@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "task-tracker",
+      "description": "Auto-tracks development ideas across all projects in docs/ideas.md, updates status as work progresses, and generates listing + HTML reports.",
+      "author": {
+        "name": "vladko13",
+        "email": "vladko13@gmail.com"
+      },
+      "category": "productivity",
+      "source": "./",
+      "homepage": "https://github.com/vladislav-vladimirov/task-tracker-skill"
+    }
+  ]
+}
