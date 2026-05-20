@@ -172,3 +172,74 @@ Before auto-updating, you must be **confident** the action maps to a specific tr
 - "plan X" / "let's plan X for later" → `planned`
 
 When the user explicitly states a status, do not ask — just apply it and announce.
+
+## Operations: list, filter, stale
+
+These produce terminal output (text tables, not files).
+
+### `/ideas-list [status]` — list ideas
+
+**Natural-language equivalents:** "show ideas", "list ideas", "what ideas do we have", "show in-progress ideas".
+
+**Behavior:**
+1. Re-read `docs/ideas.md`.
+2. If a status filter is provided, include only matching entries; otherwise include all and group by status.
+3. Sort within each status group by `updated:` descending (most recent first).
+4. Render as a compact markdown table.
+
+**Output format (no filter):**
+
+```
+### in progress (1)
+| Name | Age | Updated | Tags |
+|---|---|---|---|
+| Add OAuth login | 9d | 0d ago | feature, auth |
+
+### proposed (1)
+| Name | Age | Updated | Tags |
+|---|---|---|---|
+| Refactor billing module | 3d | 3d ago | refactor |
+
+### planned (0)
+_(none)_
+```
+
+Render sections in this order: `in progress`, `planned`, `proposed`, `done`, `dropped`. Always show the first three even if empty (render `_(none)_`). Skip `done` and `dropped` entirely if empty.
+
+**Output format (with filter):** drop the heading hierarchy; just show the single table.
+
+**Age** = days since `added:`. **Updated** = days since `updated:` (`0d ago` for today).
+
+### `/ideas-stale` — surface forgotten ideas
+
+**Natural-language equivalents:** "what's stale", "any stalled ideas", "what have I forgotten".
+
+**Thresholds (constants):**
+- `STALE_PROPOSED_DAYS = 30` — flag `proposed` ideas with `updated >= 30` days ago.
+- `STALE_IN_PROGRESS_DAYS = 14` — flag `in progress` ideas with `updated >= 14` days ago.
+
+**Behavior:**
+1. Re-read `docs/ideas.md`.
+2. Compute days since `updated:` for each entry.
+3. Filter to entries that exceed their threshold.
+4. Sort by days-since-updated descending.
+5. Render output; if zero stale entries, output: `No stale ideas. ✓` (no other punctuation; the checkmark is the only non-ASCII).
+
+**Output format:**
+
+```
+### Stale ideas (2)
+| Name | Status | Days idle | Ref | Suggested action |
+|---|---|---|---|---|
+| Add OAuth login | in progress | 18d | src/auth/oauth.ts | finish or drop |
+| Refactor billing | proposed | 45d | — | revive, drop, or plan |
+```
+
+**Suggested action heuristic:**
+- `in progress` and idle: `finish or drop`
+- `proposed` and idle: `revive, drop, or plan`
+- `planned` is never auto-flagged by default.
+
+After the table, offer: `Want me to update statuses for any of these?`
+
+**Adjusting thresholds:** the user may say "use 60 days for proposed" → use the override for this session only; do not modify SKILL.md.
