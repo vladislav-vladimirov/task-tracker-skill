@@ -360,3 +360,48 @@ After the table, offer: `Want me to update statuses for any of these?`
 - Order of sections (skip if empty): `in progress`, `planned`, `proposed`, `done`, `dropped`.
 
 **Self-contained constraint:** the file must open with no network access and no external files. Verify by writing then re-reading the file and confirming no `<script src=>`, `<link href=>`, or `<img src="http">` references exist.
+
+## Operations: `/idea-add`
+
+### `/idea-add <text>` — manual capture
+
+**Natural-language equivalents:** "save this as an idea: …", "track this: …", "add idea: …".
+
+**Behavior:**
+1. Take the user's text as the source.
+2. Distill a concise action-oriented name (kebab-case it for the `id`).
+3. Infer 0-2 tags from the text.
+4. Use the original text (or a one-sentence trim) as the description.
+5. Run fuzzy-match against existing entries.
+   - If match → ask same question as auto-capture flow.
+   - If no match → add as `proposed` and announce normally.
+6. If the text is too short to derive a clear name (e.g., < 4 words), ask: `One-line label for this idea?` Then proceed.
+
+This bypasses the threshold check used in auto-detection — anything passed to `/idea-add` is captured.
+
+## Edge cases
+
+| Situation | Handling |
+|---|---|
+| `docs/` directory missing | Create it on first write. No prompt. |
+| `docs/ideas.md` missing | Create with header (`# Ideas` + managed-by comment) on first write. |
+| File malformed (e.g., a section missing its metadata comment) | Parse what's parseable. Leave malformed entries untouched. Emit one-line warning: `Couldn't parse N entries in ideas.md — left as-is. Run /ideas-list to see what I did read.` |
+| Fuzzy match ambiguous (multiple candidates) | Show top 2-3 candidates by name; ask which (or create new). |
+| Idea raised mid-flow during unrelated work | Still record. One-line announcement. Return to the prior task immediately. |
+| Code edit could map to multiple ideas | Pick the most specific (longest shared keyword overlap). If still ambiguous, don't auto-update — keep working. |
+| Git not initialized | `ref` falls back to a file path (or empty if neither commit nor file is known). No error. |
+| User edits `docs/ideas.md` manually mid-session | Re-read the file before every write. If parsed content has changed since last read, show a one-line diff summary before overwriting. |
+| User overrides project root ("the ideas file is at …") | Honor the override for the current session. Do not persist it. |
+| User asks to delete an entry | Don't actually delete — set status to `dropped`. Explain: "Entries aren't deleted; marking dropped preserves history. If you want a true delete, edit the file by hand." |
+| User asks to rename an entry | Update the `## <name>` heading and re-kebab the `id`. Update `updated:` date. Existing `ref` is preserved. |
+| Status word the user uses doesn't match the vocabulary (e.g., "marked as 'wip'") | Map to the nearest valid status (`wip` → `in progress`). Announce the mapping: `Mapping "wip" → "in progress".` |
+| Description contains markdown that could break parsing (e.g., starts with `##`) | Indent or escape the offending lines so they don't look like new entries. Verify by re-reading after write. |
+
+## Anti-patterns (do not do)
+
+- **Do not** silently lose ideas or status changes. Every write must be preceded by a read.
+- **Do not** create empty announcement messages — every status change has the one-line format from the transition table.
+- **Do not** invoke this skill for clearly hypothetical academic discussion ("imagine if a system could…") or for questions about existing behavior.
+- **Do not** modify other projects' `docs/ideas.md` — only the current project's file.
+- **Do not** edit the `# Ideas` header or the managed-by comment line. These are anchors.
+- **Do not** persist any session-only overrides (custom thresholds, custom file paths) back into SKILL.md.
