@@ -243,3 +243,120 @@ Render sections in this order: `in progress`, `planned`, `proposed`, `done`, `dr
 After the table, offer: `Want me to update statuses for any of these?`
 
 **Adjusting thresholds:** the user may say "use 60 days for proposed" → use the override for this session only; do not modify SKILL.md.
+
+## Operations: HTML report
+
+### `/ideas-report` — generate `docs/ideas-report.html`
+
+**Natural-language equivalents:** "generate a report", "make an HTML report", "give me a report I can share".
+
+**Behavior:**
+1. Re-read `docs/ideas.md`.
+2. Generate a single self-contained HTML file: inline CSS, no external assets, no JavaScript.
+3. Write to `<project_root>/docs/ideas-report.html` (overwrite if exists).
+4. Output: `Wrote report → docs/ideas-report.html (open it in a browser to view).`
+
+**HTML structure (use this template; substitute values):**
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Ideas — {{ PROJECT_NAME }}</title>
+  <style>
+    :root {
+      --bg: #fafafa; --fg: #1a1a1a; --muted: #6b7280; --card: #ffffff;
+      --border: #e5e7eb; --accent: #2563eb;
+      --proposed: #6b7280; --planned: #2563eb; --in-progress: #d97706;
+      --done: #059669; --dropped: #9ca3af;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+           background: var(--bg); color: var(--fg); }
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+    header { margin-bottom: 32px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .meta { color: var(--muted); font-size: 14px; }
+    .summary { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+    .pill { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+            background: #fff; border: 1px solid var(--border); }
+    .pill.proposed { color: var(--proposed); }
+    .pill.planned { color: var(--planned); }
+    .pill.in-progress { color: var(--in-progress); }
+    .pill.done { color: var(--done); }
+    .pill.dropped { color: var(--dropped); }
+    section { margin-top: 32px; }
+    section h2 { font-size: 18px; margin: 0 0 12px; text-transform: capitalize; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--proposed);
+            border-radius: 8px; padding: 16px; }
+    .card.proposed { border-left-color: var(--proposed); }
+    .card.planned { border-left-color: var(--planned); }
+    .card.in-progress { border-left-color: var(--in-progress); }
+    .card.done { border-left-color: var(--done); }
+    .card.dropped { border-left-color: var(--dropped); opacity: 0.7; }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0 0 12px; color: #374151; }
+    .card .footer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+                    color: var(--muted); font-size: 12px; }
+    .card .tag { padding: 2px 8px; border-radius: 4px; background: #f3f4f6; }
+    .card a { color: var(--accent); }
+    .empty { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Ideas — {{ PROJECT_NAME }}</h1>
+      <div class="meta">Generated {{ GENERATED_AT }} · {{ TOTAL_COUNT }} ideas total</div>
+      <div class="summary">
+        <span class="pill in-progress">In progress · {{ COUNT_IN_PROGRESS }}</span>
+        <span class="pill planned">Planned · {{ COUNT_PLANNED }}</span>
+        <span class="pill proposed">Proposed · {{ COUNT_PROPOSED }}</span>
+        <span class="pill done">Done · {{ COUNT_DONE }}</span>
+        <span class="pill dropped">Dropped · {{ COUNT_DROPPED }}</span>
+      </div>
+    </header>
+
+    <!-- Repeat per status, in this order: in-progress, planned, proposed, done, dropped -->
+    <section>
+      <h2>In progress</h2>
+      <div class="grid">
+        <!-- one .card per idea -->
+        <article class="card in-progress">
+          <h3>{{ NAME }}</h3>
+          <p>{{ DESCRIPTION_HTML_ESCAPED }}</p>
+          <div class="footer">
+            <span>added {{ ADDED }}</span>
+            <span>· updated {{ UPDATED }}</span>
+            <!-- tags -->
+            <span class="tag">{{ TAG }}</span>
+            <!-- ref: if URL, render as link; if commit hash, plain text; if file path, plain text -->
+            <span>· ref: <a href="{{ REF_URL }}">{{ REF_LABEL }}</a></span>
+          </div>
+        </article>
+        <!-- ... -->
+      </div>
+      <!-- If zero entries for this section, omit the section entirely (do not render an empty grid). -->
+    </section>
+    <!-- ... -->
+  </div>
+</body>
+</html>
+```
+
+**Substitution rules:**
+- `{{ PROJECT_NAME }}` — basename of the project root.
+- `{{ GENERATED_AT }}` — human-readable date+time (e.g., `2026-05-21 14:32`).
+- Counts — integers; if zero, still render the pill (so totals are always visible).
+- `{{ DESCRIPTION_HTML_ESCAPED }}` — escape `&`, `<`, `>` from the markdown description; preserve line breaks as `<br>`.
+- `ref` rendering:
+  - Starts with `http://` or `https://` → render as `<a href>` with the URL as label.
+  - Matches `PR#\d+` → render as plain text (no link, since we don't know the repo).
+  - Matches a git hash (7-40 hex chars) → render as plain text.
+  - Otherwise → render as plain text (likely a file path).
+- Sections with zero entries: omit the entire section (no empty grids).
+- Order of sections (skip if empty): `in progress`, `planned`, `proposed`, `done`, `dropped`.
+
+**Self-contained constraint:** the file must open with no network access and no external files. Verify by writing then re-reading the file and confirming no `<script src=>`, `<link href=>`, or `<img src="http">` references exist.
