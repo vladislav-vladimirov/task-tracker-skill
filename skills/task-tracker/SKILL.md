@@ -32,3 +32,56 @@ On the first turn of any session in a project:
 3. If no, take no action. The file is created the first time an idea is recorded.
 
 (Subsequent sections in this file define storage format, detection rules, status updates, operations, and edge cases.)
+
+## Storage format (`docs/ideas.md`)
+
+Each idea is a `##` heading section with a single HTML-comment metadata line immediately below, then a markdown description until the next `##`.
+
+**Canonical example:**
+
+```markdown
+# Ideas
+
+<!-- Managed by task-tracker skill. Hand-edit freely; format must stay consistent. -->
+
+## Add OAuth login
+<!-- id: add-oauth-login | status: in progress | added: 2026-05-12 | updated: 2026-05-20 | tags: feature, auth | ref: PR#42 -->
+Support Google + GitHub sign-in via NextAuth. Replaces the current password-only flow.
+
+## Refactor billing module
+<!-- id: refactor-billing-module | status: proposed | added: 2026-05-18 | updated: 2026-05-18 | tags: refactor -->
+The billing logic is spread across three files; consolidate into a single service.
+```
+
+**Field rules:**
+
+| Field | Format | Required | Notes |
+|---|---|---|---|
+| `id` | kebab-case slug of the name | yes | Stable; set on creation, never modified. |
+| `status` | `proposed` \| `planned` \| `in progress` \| `done` \| `dropped` | yes | Exact strings, lowercase, with spaces (not hyphens). |
+| `added` | `YYYY-MM-DD` | yes | Set on creation, never modified. |
+| `updated` | `YYYY-MM-DD` | yes | Refreshed on every status change. |
+| `tags` | comma-separated lowercase strings | yes | May be empty (e.g., `tags: `). |
+| `ref` | free text — file path, commit hash, or PR URL | no | Populated when status moves to `in progress` or `done`. Omit the field entirely if empty. |
+
+**Metadata line format:** ` | ` (space-pipe-space) separates fields. Field name and value separated by `: ` (colon-space). The whole line is wrapped in `<!-- ... -->`.
+
+**File-level rules:**
+- The file always starts with `# Ideas` then the managed-by comment.
+- Entries are appended chronologically; **newest at the bottom**.
+- Status changes update only the metadata comment in place. Entries are never reordered or removed (use `dropped` instead).
+- When creating the file for the first time, write the header (`# Ideas` + managed-by comment) before the first entry.
+
+**Parsing rules (when reading the file):**
+1. Skip the `# Ideas` heading and the managed-by comment.
+2. For each subsequent `## <name>` heading:
+   - Read the name from the heading text.
+   - Read the next line; it must be an HTML comment matching the metadata format. Parse fields.
+   - Collect all following lines until the next `## ` or EOF as the description.
+3. If a `##` section has no metadata comment, or the comment is unparseable, leave it untouched and emit a one-line warning (see Edge cases). Do NOT silently fix or delete.
+
+**Writing rules (when modifying the file):**
+- Re-read the file immediately before every write to avoid clobbering manual edits.
+- For status updates, regenerate ONLY the metadata comment line for the affected entry; leave name and description untouched.
+- For new entries, append at the end of the file (no separator beyond the standard blank line).
+- Preserve existing line endings and trailing newline behavior.
