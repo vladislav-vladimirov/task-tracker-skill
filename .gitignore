@@ -7,3 +7,9 @@ Thumbs.db
 
 # Generated reports (per-project, not tracked here)
 docs/ideas-report.html
+
+# Claude Code session state
+.claude/
+
+# Crash dumps
+*.stackdump
