@@ -85,3 +85,48 @@ The billing logic is spread across three files; consolidate into a single servic
 - For status updates, regenerate ONLY the metadata comment line for the affected entry; leave name and description untouched.
 - For new entries, append at the end of the file (no separator beyond the standard blank line).
 - Preserve existing line endings and trailing newline behavior.
+
+## Capturing new ideas
+
+**Threshold:** capture anything mentioned as a possibility. Better to over-capture (the user can `dropped` later) than to miss.
+
+**Trigger phrases (non-exhaustive):**
+- "we could…", "what if we…", "it'd be nice to…", "would be cool to…"
+- "let's also…", "another thing…", "TODO: …", "FIXME: …"
+- "we should fix/refactor/add/remove…"
+- Explicit: "track this: …", "idea: …", "save this as an idea"
+- A user describes a problem and a possible solution in the same turn, even if non-committal.
+
+**Capture flow:**
+
+1. Detect a candidate idea in the conversation.
+2. **Fuzzy-match against existing entries.** Compare normalized name and description against the loaded ideas list. Match criteria:
+   - Same `id` slug after kebab-casing the new name → strong match.
+   - High word overlap in name (>60%) → likely match.
+   - High word overlap in description (>50%) AND topical overlap in name → likely match.
+3. **Branch based on match result:**
+
+| Result | Action |
+|---|---|
+| No match | Add as new `proposed` entry. Announce: `Tracked new idea: "<name>" (proposed).` |
+| One likely match | Ask: `This sounds like the existing idea "<X>" — append to that one or create new?` Wait for answer. |
+| Multiple likely matches | Show top 2-3 candidates by name. Ask: `Possible matches: 1) <A>, 2) <B>, 3) <C>. Append to one, or create new?` |
+
+**Naming a new entry:**
+- Distill a concise, action-oriented heading (e.g., "Add rate limiting to /api/login", not "rate limiting stuff").
+- Kebab-case it for the `id` field.
+- If the name is ambiguous, ask the user for a one-line label before saving.
+
+**Tags on capture:**
+- Infer 0-2 tags from context (e.g., `feature`, `refactor`, `fix`, `experiment`, `cleanup`, `docs`, `perf`, plus any obvious domain like `auth`, `ui`, `db`).
+- Don't invent tags when you can't infer naturally — leave empty.
+
+**Description on capture:**
+- Use the exact phrasing from the user where possible.
+- One or two sentences. Capture WHAT, not HOW.
+
+**Announcement style:**
+- One line. No emojis. No follow-up question unless duplicate detection requires one.
+- Example: `Tracked new idea: "Add rate limiting to /api/login" (proposed).`
+
+**When you're uncertain** whether something is a real idea or just conversational filler, lean toward capturing — but skip if it's clearly hypothetical academic ("imagine if a system could…") or a question about existing behavior ("how does X work?").
