@@ -130,3 +130,45 @@ The billing logic is spread across three files; consolidate into a single servic
 - Example: `Tracked new idea: "Add rate limiting to /api/login" (proposed).`
 
 **When you're uncertain** whether something is a real idea or just conversational filler, lean toward capturing — but skip if it's clearly hypothetical academic ("imagine if a system could…") or a question about existing behavior ("how does X work?").
+
+## Status auto-updates
+
+Status changes are **automatic** and **announced** (one line, no confirmation requested).
+
+**Transition table:**
+
+| Trigger condition | New status | `ref` value | Announcement template |
+|---|---|---|---|
+| User commits to plan ("we'll do X next", "let's plan to tackle X this week") without starting work | `planned` | unchanged | `Marking "<name>" → planned.` |
+| First `Edit` or `Write` tool call against a file that maps to a tracked idea | `in progress` | the file path being edited | `Marking "<name>" → in progress.` |
+| A `git commit` is made that clearly relates to the idea | `done` | commit hash (`git log -1 --format=%h`) | `Marking "<name>" → done (commit <hash>).` |
+| A PR is opened/merged related to the idea | `done` | PR URL or `PR#<number>` | `Marking "<name>" → done (PR#<n>).` |
+| User says "done", "X is done", "finished X", "shipped X" | `done` | last known commit hash if available, else empty | `Marking "<name>" → done.` |
+| User says "drop X", "scrap X", "nevermind on X", "kill X" | `dropped` | unchanged | `Marking "<name>" → dropped.` |
+
+**On every status change, also:**
+- Update `updated:` to today's date (YYYY-MM-DD).
+- Re-read `docs/ideas.md` first; modify only the metadata line of the affected entry; write back.
+
+**Mapping work to an idea:**
+
+Before auto-updating, you must be **confident** the action maps to a specific tracked idea. Apply this test:
+
+1. Does the file being edited (or the commit message, or the spoken phrase) name or clearly reference an existing idea by name, slug, or distinctive keyword?
+2. If yes → update.
+3. If multiple ideas could match → pick the most specific (longest shared keyword overlap). If still ambiguous → don't auto-update; either ask the user or proceed without updating.
+4. If no idea clearly fits → don't auto-update. Just keep working.
+
+**Things that do NOT trigger status updates:**
+- Reading files (no edit).
+- Editing files that don't map to any tracked idea.
+- Running tests, linters, or other read-only tools.
+- Conversation about an idea without starting work on it.
+
+**Manual overrides** via natural language are routed through the same logic:
+- "mark X as in progress" / "start on Y" → `in progress`
+- "X is done" / "mark X done" → `done`
+- "drop X" / "scrap X" → `dropped`
+- "plan X" / "let's plan X for later" → `planned`
+
+When the user explicitly states a status, do not ask — just apply it and announce.
